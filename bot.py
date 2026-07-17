@@ -99,8 +99,11 @@ def health():
     return jsonify({'status': 'online', 'timestamp': datetime.now().isoformat()})
 
 if __name__ == '__main__':
+    port = int(os.getenv('PORT', 8080))
+    
     print("\n" + "="*50)
     print("🤖 Bot IA com Groq iniciando...")
-    print("📍 http://localhost:5000")
+    print(f"📍 http://0.0.0.0:{port}")
     print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    
+    app.run(host='0.0.0.0', port=port, debug=False)
