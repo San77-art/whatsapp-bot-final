@@ -9,6 +9,7 @@ from groq import Groq
 import os
 from dotenv import load_dotenv
 import json
+import traceback
 from datetime import datetime
 
 load_dotenv()
@@ -50,36 +51,61 @@ def receber_mensagem():
         
         print(f"📨 [{datetime.now().strftime('%H:%M:%S')}] {user_id}: {mensagem}")
         
+        # Verificar chave Groq
+        groq_key = os.getenv("GROQ_API_KEY")
+        if not groq_key or groq_key == "":
+            print("❌ ERRO: GROQ_API_KEY não configurada!")
+            return jsonify({
+                'success': False,
+                'erro': 'GROQ_API_KEY não configurada no ambiente'
+            }), 500
+        
+        print(f"✅ Chave Groq detectada")
+        
         # Chamar Groq
-        resposta = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                *conversas[user_id][-10:]  # Últimas 10 mensagens
-            ],
-            temperature=0.7,
-            max_tokens=256
-        )
-        
-        # Extrair resposta
-        assistant_message = resposta.choices[0].message.content
-        
-        # Guardar histórico
-        conversas[user_id].append({
-            "role": "assistant",
-            "content": assistant_message
-        })
-        
-        print(f"✅ Bot: {assistant_message[:100]}...")
-        
-        return jsonify({
-            'success': True,
-            'response': assistant_message,
-            'timestamp': datetime.now().isoformat()
-        })
+        try:
+            print(f"🔄 Chamando Groq com modelo llama-3.3-70b-versatile...")
+            
+            resposta = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    *conversas[user_id][-10:]  # Últimas 10 mensagens
+                ],
+                temperature=0.7,
+                max_tokens=256
+            )
+            
+            # Extrair resposta
+            assistant_message = resposta.choices[0].message.content
+            
+            # Guardar histórico
+            conversas[user_id].append({
+                "role": "assistant",
+                "content": assistant_message
+            })
+            
+            print(f"✅ Bot respondeu: {assistant_message[:100]}...")
+            
+            return jsonify({
+                'success': True,
+                'response': assistant_message,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        except Exception as groq_error:
+            print(f"❌ ERRO GROQ: {str(groq_error)}")
+            print(f"❌ Tipo de erro: {type(groq_error)}")
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'erro': f'Erro na API Groq: {str(groq_error)}'
+            }), 500
         
     except Exception as e:
-        print(f"❌ Erro: {str(e)}")
+        print(f"❌ ERRO GERAL: {str(e)}")
+        print(f"❌ Tipo de erro: {type(e)}")
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'erro': str(e)
